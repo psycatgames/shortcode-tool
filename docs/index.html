@@ -22,6 +22,8 @@
         body {
             display: flex;
             flex-direction: column;
+            align-items: center;
+            justify-content: center;
             gap: 24px;
             margin: 24px;
             min-height: calc(100% - 48px);
@@ -38,11 +40,12 @@
             border-radius: 8px;
             outline: none !important;
             border: 2px solid #f1f2f6;
+            width: calc(100% - 48px);
         }
 
         textarea:active,
         textarea:focus {
-            border: 2px solid #5000ff;
+            border: 2px solid blue;
         }
 
         #input {
@@ -52,29 +55,21 @@
         #output {
             flex-grow: 1;
             background: #f1f2f6;
+            padding-bottom: 72px;
         }
 
-        #copied {
+        #copy {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
+            bottom: 48px;
+            height: 44px;
+            background: blue;
             color: #fff;
-            -webkit-backdrop-filter: blur(10px);
-            backdrop-filter: blur(10px);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
-            opacity: 0;
-            transition: 0.3s ease;
-            pointer-events: none;
-        }
-
-        #copied.active {
-            opacity: 1;
+            padding: 0 24px;
+            cursor: pointer;
+            border-radius: 99px;
         }
     </style>
 </head>
@@ -82,7 +77,7 @@
 <body>
     <textarea id="input" placeholder="Paste the whole article here" autofocus></textarea>
     <textarea id="output" placeholder="Output will appear here" readonly></textarea>
-    <div id="copied">Copied</div>
+    <div id="copy">Copy</div>
 
     <script>
 
@@ -131,8 +126,8 @@
             output.select()
             output.setSelectionRange(0, 99999)
             navigator.clipboard.writeText(output.value)
-            copied.classList.add("active")
-            setTimeout(() => copied.classList.remove("active"), 1000)
+            copy.textContent = "Copied"
+            setTimeout(() => copy.textContent = "Copy", 1000)
         }
 
 
@@ -212,10 +207,9 @@
         }
 
 
-        output.addEventListener("click", () => {
+        copy.addEventListener("click", () => {
             copyText()
         })
-
 
     </script>
 </body>
