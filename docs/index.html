@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Shortcode Tool</title>
+    {{/* <link rel="canonical" href="xxxx">  */}}
+    <style>
+      * {
+        font-family: BlinkMacSystemFont, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        margin: 24px;
+      }
+
+      textarea,
+      #output {
+        padding: 24px;
+        font-size: 16px;
+        height: 50%;
+      }
+
+      textarea {
+        border: 2px solid #5000ff;
+      }
+
+      #output {
+        background: #f1f2f6;
+      }
+    </style>
+  </head>
+  <body>
+    <textarea id="input" placeholder="Paste the reference list here"></textarea>
+    <div id="output">Output</div>
+    <script id="rendered-js">
+      const get_domain_from_url = url => {
+        let a = document.createElement('a')
+        a.setAttribute('href', url)
+        return a.hostname
+      }
+      const copyText = text => {
+        navigator.clipboard.writeText(text).then(() => {
+          console.log("copied")
+        })
+      }
+      input.oninput = () => {
+        const entriesValue = input.value.split('"')[1]
+        const entries = entriesValue.split("|;")
+        output.innerHTML = ""
+        entries.forEach((entry, index) => {
+          const entrySplit = entry.split("|$")
+          const referenceText = entrySplit[0]
+          const referenceLink = entrySplit[1]
+          let link = ""
+          if (referenceLink !== "") {
+            const linkSplit = referenceLink.split("https")
+            const startText = linkSplit[0]
+            const linkSplitString = linkSplit[1]
+            const refLink = `https${linkSplit}`
+            let referenceDomain = get_domain_from_url(refLink)
+            if (referenceDomain === "ahref.cash") {
+              referenceDomain = "amazon.com"
+            }
+            link = startText
+            if (linkSplitString !== "") {
+              link = `${link}
+					<a href="${referenceLink}" target="_blank" rel="nofollow noopener">${referenceDomain}</a>`
+            }
+          }
+          output.innerHTML = `${output.innerHTML}[^${index + 1}]: ${referenceText} ${link}
+					<br>`
+          output.addEventListener("click", () => {
+            copyText(output.innerHTML)
+          })
+        })
+      }
+    </script>
+  </body>
+</html>
