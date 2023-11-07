@@ -1,85 +1,223 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+
+<head>
     <meta charset="UTF-8">
     <title>Shortcode Tool</title>
     <link rel="canonical" href="https://psycatgames.github.io/shortcode-tool/">
     <style>
-      * {
-        font-family: BlinkMacSystemFont, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        text-rendering: optimizeLegibility;
-      }
+        html {
+            height: 100%;
+        }
 
-      body {
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-        margin: 24px;
-      }
+        * {
+            font-family: "input-mono", monospace;
+            font-weight: 400;
+            font-style: normal;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
 
-      textarea,
-      #output {
-        padding: 24px;
-        font-size: 16px;
-        height: 50%;
-      }
+        body {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            margin: 24px;
+            min-height: calc(100% - 48px);
+            position: relative;
+        }
 
-      textarea {
-        border: 2px solid #5000ff;
-      }
+        textarea {
+            padding: 24px;
+            font-size: 14px;
+            line-height: 1.5;
+            height: 50%;
+            border: none;
+            resize: none;
+            border-radius: 8px;
+            outline: none !important;
+            border: 2px solid #f1f2f6;
+        }
 
-      #output {
-        background: #f1f2f6;
-      }
+        textarea:active,
+        textarea:focus {
+            border: 2px solid #5000ff;
+        }
+
+        #input {
+            flex-basis: 20vh;
+        }
+
+        #output {
+            flex-grow: 1;
+            background: #f1f2f6;
+        }
+
+        #copied {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            opacity: 0;
+            transition: 0.3s ease;
+            pointer-events: none;
+        }
+
+        #copied.active {
+            opacity: 1;
+        }
     </style>
-  </head>
-  <body>
-    <textarea id="input" placeholder="Paste the reference list here"></textarea>
-    <div id="output">Output</div>
-    <script id="rendered-js">
-      const get_domain_from_url = url => {
-        let a = document.createElement('a')
-        a.setAttribute('href', url)
-        return a.hostname
-      }
-      const copyText = text => {
-        navigator.clipboard.writeText(text).then(() => {
-          console.log("copied")
-        })
-      }
-      input.oninput = () => {
-        const entriesValue = input.value.split('"')[1]
-        const entries = entriesValue.split("|;")
-        output.innerHTML = ""
-        entries.forEach((entry, index) => {
-          const entrySplit = entry.split("|$")
-          const referenceText = entrySplit[0]
-          const referenceLink = entrySplit[1]
-          let link = ""
-          if (referenceLink !== "") {
-            const linkSplit = referenceLink.split("https")
-            const startText = linkSplit[0]
-            const linkSplitString = linkSplit[1]
-            const refLink = `https${linkSplit}`
-            let referenceDomain = get_domain_from_url(refLink)
-            if (referenceDomain === "ahref.cash") {
-              referenceDomain = "amazon.com"
+</head>
+
+<body>
+    <textarea id="input" placeholder="Paste the whole article here" autofocus></textarea>
+    <textarea id="output" placeholder="Output will appear here" readonly></textarea>
+    <div id="copied">Copied</div>
+
+    <script>
+
+        const getDomain = str => {
+            const regex = /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)/igm
+            let m
+
+            while ((m = regex.exec(str)) !== null) {
+                if (m.index === regex.lastIndex) {
+                    regex.lastIndex++
+                }
+
+                m.forEach((match, groupIndex) => {
+                    console.log(`Found match, group ${groupIndex}: ${match}`);
+                    if (groupIndex === 1) {
+                        return match
+                    }
+                })
             }
-            link = startText
-            if (linkSplitString !== "") {
-              link = `${link}
-					<a href="${referenceLink}" target="_blank" rel="nofollow noopener">${referenceDomain}</a>`
+        }
+
+
+        // The regex provided
+        const domainRegex = /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)/igm;
+
+        // Function to extract the domain
+        const extractDomain = url => {
+            // Resetting lastIndex to 0 to ensure the regex works for multiple calls
+            domainRegex.lastIndex = 0
+
+            // Using the regex to test the URL and extract the domain
+            const matches = domainRegex.exec(url)
+
+            // If there are matches and the first group is captured, return it; otherwise, return an empty string
+            return matches && matches[1] ? matches[1] : ''
+        }
+
+
+
+        const replaceTrailingLineBreaks = str => {
+            return str.replace(/\n+$/, '\n\n\n')
+        }
+
+
+        const copyText = () => {
+            output.select()
+            output.setSelectionRange(0, 99999)
+            navigator.clipboard.writeText(output.value)
+            copied.classList.add("active")
+            setTimeout(() => copied.classList.remove("active"), 1000)
+        }
+
+
+        const replaceReference = inputText => {
+            return inputText.replace(/\*\*\(reference(\d+)\)\*\*/g, '[^$1]')
+        }
+
+        const extractText = inputText => {
+            const matches = inputText.match(/{{< references-list entries="(.+)" >}}/)
+            const match = matches ? matches[1] : ''
+            const replacedText = inputText.replace(/{{< references-list entries="(.+)" >}}/, "")
+            return {
+                referenceList: match,
+                replacedText: replaceTrailingLineBreaks(replacedText)
             }
-          }
-          output.innerHTML = `${output.innerHTML}[^${index + 1}]: ${referenceText} ${link}
-					<br>`
-          output.addEventListener("click", () => {
-            copyText(output.innerHTML)
-          })
+        }
+
+
+        const isValidUrl = string => {
+            try {
+                new URL(string)
+                return true
+            } catch (err) {
+                return false
+            }
+        }
+
+
+        const buildReferenceList = inputText => {
+            const entries = inputText.split("|;")
+
+            let text = ""
+
+            entries.forEach((entry, index) => {
+                const entrySplit = entry.split("|$")
+                const referenceText = entrySplit[0]
+                const referenceLink = entrySplit[1]
+
+                let link = ""
+
+                if (isValidUrl(referenceLink)) {
+                    let referenceDomain = extractDomain(referenceLink)
+
+                    if (referenceDomain === "ahref.cash") {
+                        referenceDomain = "amazon.com"
+                    }
+
+                    link = `<a href="${referenceLink}" target="_blank" rel="nofollow noopener">${referenceDomain}</a>`
+
+                } else {
+                    link = referenceLink
+                }
+
+                text = `${text}[^${index + 1}]: ${referenceText} ${link}\n`
+
+            })
+
+            return text
+
+        }
+
+
+        input.oninput = () => {
+
+            output.value = ""
+
+            let outputText = input.value
+
+            outputText = replaceReference(outputText)
+
+            const transformedText = extractText(outputText)
+
+            output.value = transformedText.replacedText + buildReferenceList(transformedText.referenceList)
+
+
+
+        }
+
+
+        output.addEventListener("click", () => {
+            copyText()
         })
-      }
+
+
     </script>
-  </body>
+</body>
+
 </html>
